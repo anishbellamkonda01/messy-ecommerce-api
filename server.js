@@ -1,4 +1,5 @@
 const express = require('express');
+const pricingService = require('./services/pricing');
 const app = express();
 app.use(express.json());
 
@@ -56,29 +57,18 @@ app.post('/orders', (req, res) => {
   const user = users.find(u => u.id === userId);
   if (!user) return res.status(404).json({ error: 'User not found' });
 
-  let total = 0;
   const orderItems = [];
 
   for (const pid of productIds) {
     const product = products.find(p => p.id === pid);
     if (product) {
-      total += product.price;
       orderItems.push(product);
     }
   }
 
-  // Pricing logic scattered here (should be its own module)
-  if (couponCode === 'SAVE10') {
-    total = total * 0.9;
-  } else if (couponCode === 'SAVE20') {
-    total = total * 0.8;
-  } else if (couponCode === 'HALFOFF') {
-    total = total * 0.5;
-  }
-
-  // Tax calculation duplicated (exists in utils too)
-  const tax = total * 0.08;
-  total = total + tax;
+  // Use centralized pricing service
+  const pricing = pricingService.calculateOrderTotal(orderItems, couponCode);
+  const total = pricing.total;
 
   const order = {
     id: orders.length + 1,
@@ -93,33 +83,20 @@ app.post('/orders', (req, res) => {
   res.json({ success: true, order });
 });
 
-// DUPLICATE pricing logic in a utility
+// Receipt generation using centralized pricing service
 app.get('/orders/:id/receipt', (req, res) => {
   const order = orders.find(o => o.id === parseInt(req.params.id));
   if (!order) return res.status(404).json({ error: 'Order not found' });
 
-  let subtotal = 0;
-  for (const item of order.items) {
-    subtotal += item.price;
-  }
-
-  if (order.couponCode === 'SAVE10') {
-    subtotal = subtotal * 0.9;
-  } else if (order.couponCode === 'SAVE20') {
-    subtotal = subtotal * 0.8;
-  } else if (order.couponCode === 'HALFOFF') {
-    subtotal = subtotal * 0.5;
-  }
-
-  const tax = subtotal * 0.08;
-  const finalTotal = subtotal + tax;
+  // Use centralized pricing service
+  const pricing = pricingService.calculateOrderTotal(order.items, order.couponCode);
 
   res.json({
     orderId: order.id,
     items: order.items.map(i => ({ name: i.name, price: i.price })),
-    subtotal: Math.round(subtotal * 100) / 100,
-    tax: Math.round(tax * 100) / 100,
-    total: Math.round(finalTotal * 100) / 100,
+    subtotal: pricing.subtotal,
+    tax: pricing.tax,
+    total: pricing.total,
     coupon: order.couponCode || 'none'
   });
 });

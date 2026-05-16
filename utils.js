@@ -1,24 +1,11 @@
 // Utility file that became a dumping ground (common technical debt)
 
-// Duplicated tax calculation (also exists in server.js)
-function calculateTax(amount) {
-  return amount * 0.08;
-}
-
 // Duplicated validation (also exists in server.js routes)
 function validateRequired(fields, body) {
   for (const field of fields) {
     if (!body[field]) return false;
   }
   return true;
-}
-
-// Duplicated coupon logic (also exists in server.js)
-function applyCoupon(total, code) {
-  if (code === 'SAVE10') return total * 0.9;
-  if (code === 'SAVE20') return total * 0.8;
-  if (code === 'HALFOFF') return total * 0.5;
-  return total;
 }
 
 // Unused function (dead code)
@@ -44,9 +31,7 @@ function logAction(action, data) {
 }
 
 module.exports = {
-  calculateTax,
   validateRequired,
-  applyCoupon,
   formatCurrency,
   generateId,
   calculateShipping,
